@@ -1,6 +1,8 @@
 #pragma once
 
 #include "ofMain.h"
+#include "ofxUI.h"
+
 #include "videoChannel.h"
 
 class testApp : public ofBaseApp{
@@ -8,10 +10,15 @@ class testApp : public ofBaseApp{
         VideoChannel channel1;
         VideoChannel channel2;
 
+        ofxUICanvas *gui;
+
 	public:
 		void setup();
 		void update();
 		void draw();
+
+        void exit();
+        void guiEvent(ofxUIEventArgs &e);
 
 		void keyPressed(int key);
 		void keyReleased(int key);

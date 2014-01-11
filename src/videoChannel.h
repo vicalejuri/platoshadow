@@ -1,6 +1,9 @@
 #pragma once
 
 #include "ofMain.h"
+#include "ofxUI.h"
+
+#include "gui/ofxUIVideoChannel.h"
 
 class VideoChannel {
     /*
@@ -8,19 +11,29 @@ class VideoChannel {
      */
     public:
         ofFbo                 output;
-        vector<ofVideoPlayer> videoSlots;
+        // vector<ofVideoPlayer> videoSlots;
 
+        // hash: Name of Video, VideoPlayer
+        map<string,ofVideoPlayer> videoSlots;
+
+        // Gui Parameters
+        ofxUISuperCanvas               *gui;
         int width, height;
-        int active_slot;            // Active slot
+        string name;
+
+        // Active slot
         bool active;
+        string active_slot;
 
         VideoChannel();
-        void init(int width, int height);
 
+        void init(string name, int width, int height);
+        void init_gui( ofxUICanvas *shared_res );
         bool loadMovie(string movie_path);
 
+        void guiEvent(ofxUIEventArgs &e);
+
         void play();
-        void play(int new_slot);
         void stop();
 
         void update();
