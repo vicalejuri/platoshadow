@@ -7,13 +7,16 @@
 
 class testApp : public ofBaseApp{
     public:
-        VideoChannel channel1;
-        VideoChannel channel2;
+
+        vector<VideoChannel*> channels;
 
         ofxUICanvas *gui;
 
 	public:
 		void setup();
+        void setup_gui();
+        void setup_videochannels();
+
 		void update();
 		void draw();
 

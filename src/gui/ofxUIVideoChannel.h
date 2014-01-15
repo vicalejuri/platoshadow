@@ -6,38 +6,37 @@
 
 class ofxUIVideoChannel : public ofxUIWidgetWithLabel
 {
-public:
-    ofxUIVideoChannel(float x, float y, float w, float h, ofFbo *_image, string _name) : ofxUIWidgetWithLabel()
+public: ofxUIVideoChannel(float x, float y, float w, float h, ofTexture *_image, string _name) : ofxUIWidgetWithLabel()
     {
         rect = new ofxUIRectangle(x,y,w,h);
         init(w, h, _image, _name);
     }
 
-    ofxUIVideoChannel(float x, float y, float w, float h, ofFbo *_image, string _name, bool _showLabel) : ofxUIWidgetWithLabel()
+    ofxUIVideoChannel(float x, float y, float w, float h, ofTexture *_image, string _name, bool _showLabel) : ofxUIWidgetWithLabel()
     {
         rect = new ofxUIRectangle(x,y,w,h);
         init(w, h, _image, _name);
         showLabel = _showLabel;
     }
 
-    ofxUIVideoChannel(float w, float h, ofFbo *_image, string _name) : ofxUIWidgetWithLabel()
+    ofxUIVideoChannel(float w, float h, ofTexture *_image, string _name) : ofxUIWidgetWithLabel()
     {
         rect = new ofxUIRectangle(0,0,w,h);
         init(w, h, _image, _name);
     }
 
-    ofxUIVideoChannel(float w, float h, ofFbo *_image, string _name, bool _showLabel) : ofxUIWidgetWithLabel()
+    ofxUIVideoChannel(float w, float h, ofTexture *_image, string _name, bool _showLabel) : ofxUIWidgetWithLabel()
     {
         rect = new ofxUIRectangle(0,0,w,h);
         init(w, h, _image, _name);
         showLabel = _showLabel;
     }
 
-    void init(float w, float h, ofFbo *_image, string _name)
+    void init(float w, float h, ofTexture *_image, string _name)
     {
 		name = string(_name);
 		kind = OFX_UI_WIDGET_IMAGE;
-        showLabel = true;
+        showLabel = false;
 		paddedRect = new ofxUIRectangle(-padding, -padding, w+padding*2.0, h+padding);
 		paddedRect->setParent(rect);
 
@@ -102,7 +101,7 @@ public:
 		return label;
 	}
 
-    void setImage(ofFbo *_image)
+    void setImage(ofTexture *_image)
     {
         image = _image;
     }
@@ -128,7 +127,7 @@ public:
 
 
 protected:    //inherited: ofxUIRectangle *rect; ofxUIWidget *parent;
-	ofFbo *image;
+	ofTexture *image;
     bool showLabel;
     bool cropImageToFitRect;
 };
