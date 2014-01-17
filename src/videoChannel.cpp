@@ -3,17 +3,16 @@
 
 VideoChannel::VideoChannel(){}
 VideoChannel::~VideoChannel(){
-    for(map<string,ofVideoPlayer>::iterator it = videoSlots.begin() ; it != videoSlots.end(); it++ ){
-        ofVideoPlayer &vid = it->second;
+    for(map<string,platoVideoPlayer*>::iterator it = videoSlots.begin() ; it != videoSlots.end(); it++ ){
+        platoVideoPlayer *vid = it->second;
 
-        vid.closeMovie();
+        delete vid;
     }
 
     delete gui;
 }
 
-
-void VideoChannel::init( string name, int width, int height ){
+void VideoChannel::init( string name , int width, int height){
     if(videoSlots.size() != 0){
         ofLogWarning("VideoChannel") << "VideoChannel: Already initialized. Cleaning all loaded videos.";
         videoSlots.clear();
@@ -27,12 +26,31 @@ void VideoChannel::init( string name, int width, int height ){
     output.allocate( width , height , GL_RGBA );
     out_tex = output.getTextureReference();
 
+    // Blend modes
+    this->blend_mode_list.push_back("normal");
+    this->blend_mode_list.push_back("multiply");
+    this->blend_mode_list.push_back("average");
+    this->blend_mode_list.push_back("add");
+    this->blend_mode_list.push_back("subtract");
+    this->blend_mode_list.push_back("difference");
+    this->blend_mode_list.push_back("negation");
+    this->blend_mode_list.push_back("exclusion");
+    this->blend_mode_list.push_back("screen");
+    this->blend_mode_list.push_back("overlay");
+    this->blend_mode_list.push_back("softlight");
+    this->blend_mode_list.push_back("hardlight");
+    this->blend_mode_list.push_back("colordodge");
+    this->blend_mode_list.push_back("colorburn");
+    this->blend_mode_list.push_back("linearlight");
+    this->blend_mode_list.push_back("vividlight");
+    psBlend.setup( output.getWidth(), output.getHeight() );
+
     active      = false;
     active_slot = "";
 }
 
 void VideoChannel::init_gui(ofxUICanvas *shared_res){
-    gui = new ofxUISuperCanvas( name, 0, 0, CHANNEL_GUI_SIZE_W, CHANNEL_GUI_SIZE_H, shared_res, OFX_UI_FONT_MEDIUM );
+    gui = new ofxUISuperCanvas( name, 0, 0, CHANNEL_GUI_W, CHANNEL_GUI_H, shared_res, OFX_UI_FONT_MEDIUM );
     //gui->setAutoDraw(false);
     //gui->setDrawBack(false);
     gui->addSpacer();
@@ -43,88 +61,106 @@ void VideoChannel::init_gui(ofxUICanvas *shared_res){
 
     // Colors
     gui->addWidgetDown( new ofxUILabel("Color", OFX_UI_FONT_MEDIUM) );
-    gui->addSlider("R", 0.0, 1.0, &color.r , SLIDER_SIZE_W, SLIDER_SIZE_H);
+    gui->addSlider("R", 0.0, 1.0, 1.0f , \
+            GUI_SLIDER_W('V'), GUI_SLIDER_H('V'));
 	gui->setWidgetPosition( OFX_UI_WIDGET_POSITION_RIGHT );
-    gui->addSlider("G", 0.0, 1.0, &color.g , SLIDER_SIZE_W, SLIDER_SIZE_H);
-    gui->addSlider("B", 0.0, 1.0, &color.b , SLIDER_SIZE_W, SLIDER_SIZE_H);
-    gui->addSlider("A", 0.0, 1.0, &color.a , SLIDER_SIZE_W, SLIDER_SIZE_H);
+    gui->addSlider("G", 0.0, 1.0, 1.0f , \
+            GUI_SLIDER_W('V'), GUI_SLIDER_H('V'));
+    gui->addSlider("B", 0.0, 1.0, 1.0f , \
+            GUI_SLIDER_W('V'), GUI_SLIDER_H('V'));
+    gui->addSlider("A", 0.0, 1.0, 1.0f , \
+            GUI_SLIDER_W('V'), GUI_SLIDER_H('V'));
 
+	gui->setWidgetPosition( OFX_UI_WIDGET_POSITION_DOWN );
+
+    /*
     // Range and Speed
-    ofxUIRangeSlider *ui_range = new ofxUIRangeSlider( "range", 0.0f, 1.0f, &playhead.start, &playhead.end, SLIDER_SIZE_H*2, SLIDER_SIZE_W );
+    ofxUIRangeSlider *ui_range = new ofxUIRangeSlider( "Range", 0.0f, 1.0f,  \
+                                                                0.0f, 1.0f, \
+                                            GUI_SLIDER_W('H')*2, GUI_SLIDER_H('H'));
     //gui->addWidgetWestOf( ui_range , "Color");
     gui->addWidgetDown(ui_range);
 
-    ofxUIMinimalSlider *ui_playhead = new ofxUIMinimalSlider("Playhead", 0.0, 1.0f, &playhead.pos, SLIDER_SIZE_H*2, SLIDER_SIZE_W );
+    ofxUIMinimalSlider *ui_playhead = new ofxUIMinimalSlider("Playhead", 0.0, 1.0f, 0.0f, \
+                                            GUI_SLIDER_W('H')*2, GUI_SLIDER_H('H'));
     //gui->addWidgetWestOf( ui_playhead, "G" );
     gui->addWidgetDown(ui_playhead);
 
-    ofxUIMinimalSlider *ui_speed = new ofxUIMinimalSlider("Speed", -1.0, 2.0f, &playhead.speed, SLIDER_SIZE_H, SLIDER_SIZE_W );
+    ofxUIMinimalSlider *ui_speed = new ofxUIMinimalSlider("Speed", -1.0, 2.0f, 1.0f, \
+                                            GUI_SLIDER_W('H'), GUI_SLIDER_H('H'));
     //gui->addWidgetWestOf(ui_speed, "B");
     gui->addWidgetDown(ui_speed);
+
+    */
+
+    // Add Blend mode
+    ofxUIDropDownList *ui_blend = new ofxUIDropDownList("BLEND", blend_mode_list, GUI_SLIDER_W('H'));
+    ui_blend->setAutoClose(true);
+    ui_blend->setShowCurrentSelected(true);
+    gui->addWidgetDown( ui_blend );
 
     //gui->addSpacer(255-16,2);IDE
     //gui->addToggle("D_GRID", true, 16, 16);
 
-    //gui->autoSizeToFitWidgets();
+    gui->autoSizeToFitWidgets();
     ofAddListener( gui->newGUIEvent, this, &VideoChannel::guiEvent );
 }
 
 bool VideoChannel::loadMovie(string movie_path){
     /*
-     * Creates a new instance of VideoPlayer.
+     * Creates a new instance of platoVideoPlayer.
+     *
+     *
      */
-    ofVideoPlayer vid_player;
-    //vid_player.setUseTexture( false );
-    vid_player.loadMovie( movie_path );
+    platoVideoPlayer *p         = new platoVideoPlayer( movie_path );
 
-    if(! vid_player.isLoaded()){
-        ofLogWarning("VideoChannel") << "Could not load video: " << ofToString(movie_path) << std::endl;
-        return false;
-    }
-
+    // Store the movie name
     active_slot            = movie_path;
-    videoSlots[movie_path] = vid_player;
+    videos.push_back( movie_path );
 
-    // Save videoName
-    videoNames.push_back( movie_path );
+    // Store on a new slot, with key = movie_path
+    videoSlots[movie_path] = p;
 
-    ofLog() << name << ": Loaded '" << movie_path << "' to slot " << videoNames.size()-1 << std::endl;
+    ofLog(OF_LOG_NOTICE) << "VideoChannel:" << name << ": Loaded '" << movie_path << "' to slot " << videos.size()-1 << endl;
 
     return true;
 }
 
+
+
+
+
+
+platoVideoPlayer* VideoChannel::getActivePlayer(){
+    return videoSlots[active_slot];
+}
+
+
+
+
+
 void VideoChannel::play(){
-    ofVideoPlayer &vid_player = videoSlots[active_slot];
-    vid_player.play();
+    getActivePlayer()->play();
 }
 
 void VideoChannel::stop(){
-    ofVideoPlayer &vid_player = videoSlots[active_slot];
-    vid_player.stop();
+    getActivePlayer()->stop();
 }
 
 void VideoChannel::begin(){
-    ofVideoPlayer &vid_player = videoSlots[active_slot];
-    vid_player.setPosition(0.0f);
+    getActivePlayer()->playhead.pos = 0.0f;
+    getActivePlayer()->params_flush();
 }
 
 void VideoChannel::end(){
-    ofVideoPlayer &vid_player = videoSlots[active_slot];
-    vid_player.setPosition(1.0f);
+    getActivePlayer()->playhead.end = 0.0f;
+    getActivePlayer()->params_flush();
 }
 
-void VideoChannel::setSpeed(float x){
-    ofVideoPlayer &vid_player = videoSlots[active_slot];
 
-    vid_player.setSpeed( x );
-    playhead.speed = x;
 
-    return;
-}
 
-float VideoChannel::getSpeed(){
-    return playhead.speed;
-}
+
 
 void VideoChannel::changeSlot(int c_slot){
     if( videoSlots.size() < c_slot ){
@@ -133,13 +169,12 @@ void VideoChannel::changeSlot(int c_slot){
     }
 
     // Pause previous slot
-    ofVideoPlayer &c_player = videoSlots[active_slot];
-    c_player.stop();
+    getActivePlayer()->pause();
 
-    // Play current video
-    active_slot     = videoNames[c_slot];
-    c_player        = videoSlots[active_slot];
-    c_player.play();
+    // Change active player
+    active_slot     = videos[c_slot];
+
+    getActivePlayer()->play();
 }
 
 void VideoChannel::changeSlot(string slot_name){
@@ -148,36 +183,44 @@ void VideoChannel::changeSlot(string slot_name){
 }
 
 void VideoChannel::update(){
-    ofVideoPlayer &vid_player = videoSlots[active_slot];
+    platoVideoPlayer *vid_player = getActivePlayer();
 
     // Update video, wee
-    vid_player.update();
-
-    // Update playhead pos
-    playhead.pos = vid_player.getPosition();
-
-    if(vid_player.isFrameNew()){
-        //playhead.pos = vid_player.getPosition();
-        //ofLog() << "new Frame" << endl;
-    }
-
-    //videoSlots[active_slot].update();
-    ofPushStyle();
-    output.begin();
-        ofEnableAlphaBlending();
-
-        ofSetColor( color );
-        vid_player.draw( 0, 0 );
-
-    output.end();
-    ofPopStyle();
+    vid_player->update();
 
     return;
 }
 
+
+
+
+
+
 void VideoChannel::draw(){
-    //output.draw(0,0);
+    platoVideoPlayer *vid_player = getActivePlayer();
+
+    output.begin();
+        vid_player->draw();
+    output.end();
+
+    return;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void VideoChannel::saveSettings(){
@@ -185,10 +228,81 @@ void VideoChannel::saveSettings(){
 }
 
 void VideoChannel::guiEvent(ofxUIEventArgs &e){
-    ofLog() << "guIEvent sent to " << e.widget->getName();
+    ofLog() << "guiEvent sent to " << e.widget->getName();
     string w_name = e.widget->getName();
+
+    platoVideoPlayer *p = getActivePlayer();
+    float speed = 0.0f;
+    float r,g,b,a;
+    float range_start, range_end;
+
+    // _dirty implies
+    bool _dirty = false;
+
+    // Apply the changes to the movie
     if(w_name == "Speed"){
         ofxUISlider *s = (ofxUISlider *)(e.widget);
-        setSpeed( s->getScaledValue() );
+        p->playhead.speed = s->getScaledValue();
+    }else if(w_name == "Range"){
+        ofxUIRangeSlider *s = (ofxUIRangeSlider *)(e.widget);
+
+        float ss = (s->getScaledValueLow());
+        float ee = (s->getScaledValueHigh());
+
+        p->updatePlayheadBounds(ss,ee);
+
+    /*
+     * Colors
+     */
+    }else if(w_name == "R"){
+        ofxUISlider *s = (ofxUISlider *)(e.widget);
+        p->color.r = s->getScaledValue();
+    }else if(w_name == "G"){
+        ofxUISlider *s = (ofxUISlider *)(e.widget);
+        p->color.g = s->getScaledValue();
+    }else if(w_name == "B"){
+        ofxUISlider *s = (ofxUISlider *)(e.widget);
+        p->color.b = s->getScaledValue();
+    }else if(w_name == "A"){
+        ofxUISlider *s = (ofxUISlider *)(e.widget);
+        p->color.a = s->getScaledValue();
+
+    /*
+     * Blend mode
+     */
+    }else if(w_name == "BLEND"){
+        ofxUIDropDownList *s = (ofxUIDropDownList *)(e.widget);
+        vector<int> t = (s->getSelectedIndeces());
+
+        if(t.size() < 1)
+            return;
+
+        ofLogNotice() << blend_mode_list[t[0]] << endl;
+        string blend_mode_str = blend_mode_list[t[0]];
+
+        if(blend_mode_str == "normal"){
+            blend_mode = OF_BLENDMODE_ALPHA;
+            ofx_blend_mode = 0;
+        } else if(blend_mode_str == "multiply"){
+            blend_mode = OF_BLENDMODE_ADD;
+            ofx_blend_mode = 1;
+        } else if(blend_mode_str == "average"){
+            blend_mode = OF_BLENDMODE_ADD;
+            ofx_blend_mode = 2;
+        } else if(blend_mode_str == "add"){
+            blend_mode = OF_BLENDMODE_ADD;
+            ofx_blend_mode = 3;
+        } else if(blend_mode_str == "subtract"){
+            blend_mode = OF_BLENDMODE_ADD;
+            ofx_blend_mode = 4;
+        }else {
+            blend_mode = OF_BLENDMODE_DISABLED;
+            ofx_blend_mode = 0;
+        }
     }
+
+    /*
+     *  Update the values of current movie
+     */
+    p->params_flush();
 }

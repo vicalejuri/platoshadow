@@ -4,3 +4,4 @@ ofxUI
 ofxVectorGraphics
 ofxAssimpModelLoader
 ofxThreadedImageLoader
+ofxPSBlend

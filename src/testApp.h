@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include "ofxUI.h"
+#include "ofxPSBlend.h";
 
 #include "videoChannel.h"
 
@@ -9,7 +10,7 @@ class testApp : public ofBaseApp{
     public:
 
         vector<VideoChannel*> channels;
-
+        ofxPSBlend    psBlend;
         ofxUICanvas *gui;
 
 	public:

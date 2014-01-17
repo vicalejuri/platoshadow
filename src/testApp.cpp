@@ -26,25 +26,25 @@ void testApp::setup_videochannels(){
     /*
      * Load videoChannels
      */
-    //VideoChannel *first_channel = new VideoChannel();
+    VideoChannel *first_channel = new VideoChannel();
 
-    //first_channel->init("1",800,600);
-    //first_channel->init_gui( gui );
-    //first_channel->gui->getRect()->setX( 320 );
+    first_channel->init("1",800,600);
+    first_channel->init_gui( gui );
+    first_channel->gui->getRect()->setX( 320 );
 
-    //first_channel->loadMovie( "movies/carsten.mp4" );
-    //first_channel->play();
+    first_channel->loadMovie( "movies/Adventure Time 1x07b - The Witch's Garden.avi" );
+    first_channel->play();
 
     VideoChannel *second = new VideoChannel();
 
-    second->init("2",800,600);
+    second->init("2",1024,768);
     second->init_gui( gui );
     second->gui->getRect()->setX( 640 + 20 );
-    second->loadMovie("movies/pi2.mov");
+    second->loadMovie("movies/Adventure Time 0x00 - Original Pilot.avi");
     second->play();
 
     // Save channel
-    //channels.push_back( first_channel );;
+    channels.push_back( first_channel );;
     channels.push_back( second );
 }
 
@@ -53,10 +53,12 @@ void testApp::setup(){
     ofBackground( ofColor(233,52,27) );
     //ofSetVerticalSync(false);
     ofEnableSmoothing();
-    ofSetLogLevel( OF_LOG_VERBOSE );
+    ofSetLogLevel( OF_LOG_NOTICE );
 
     setup_gui();
     setup_videochannels();
+
+    psBlend.setup( 680, 540 );
 }
 
 void testApp::exit(){
@@ -89,14 +91,35 @@ void testApp::draw(){
     // Render the movie to OUTPUT
     //channel1.draw();
 
-    // Draw the output plz
-    vector<VideoChannel*>::iterator it;
-    for(it=channels.begin(); it != channels.end() ; it++){
+
+    // Render each video channel
+    vector<VideoChannel*>::iterator it = (channels.begin());
+    for( it = channels.begin() ; it != channels.end() ; it++){
         VideoChannel *chan = (*it);
         chan->draw();
     }
 
-	ofDrawBitmapString("Hello World", 300, 10);
+    // Blend them together
+    ofPushMatrix();
+    ofPushStyle();
+        it = channels.begin();
+        VideoChannel *first = (*it);
+
+        psBlend.begin();
+        first->out_tex.draw(0,0,680,540);
+        psBlend.end();
+
+        for(it=(it++);it != channels.end(); it++){
+            VideoChannel *chan = (*it);
+
+            psBlend.draw( chan->out_tex, chan->ofx_blend_mode ,
+                         0, 0, 680, 540 );
+            //chan->out_tex.draw(0,0, 680, 540);
+        }
+    ofPopStyle();
+    ofPopMatrix();
+
+	//ofDrawBitmapString("Hello World", 300, 10);
 }
 
 //--------------------------------------------------------------
